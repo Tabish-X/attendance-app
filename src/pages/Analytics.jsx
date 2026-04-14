@@ -215,7 +215,7 @@ export default function Analytics({ addToast }) {
                 <XAxis dataKey="label" tick={{ fill: "var(--text3)", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fill: "var(--text3)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => v + "%"} />
                 <Tooltip content={<CustomTooltip />} />
-                <ReferenceLine y={75} stroke="var(--accent)" strokeDasharray="4 3" strokeWidth={1.5} label={{ value: "75%", fill: "var(--accent)", fontSize: 10, position: "right" }} />
+                <ReferenceLine y={75} stroke="var(--accent)" strokeDasharray="4 3" strokeWidth={1.5} />
                 <Line type="monotone" dataKey="pct" name="Attendance %" stroke="var(--accent)"
                   strokeWidth={2} dot={{ fill: "var(--accent)", r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
