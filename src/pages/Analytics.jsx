@@ -166,7 +166,7 @@ export default function Analytics({ addToast }) {
 
         {/* Bar Chart */}
         <div className="card">
-          <p className="section-title">Bar Graph</p>
+          <p className="section-title">Bar Chart</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={subjectData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -184,7 +184,7 @@ export default function Analytics({ addToast }) {
 
         {/* Pie Chart */}
         <div className="card">
-          <p className="section-title">Chart Graph</p>
+          <p className="section-title">Pie Chart</p>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value"
