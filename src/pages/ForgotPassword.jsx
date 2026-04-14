@@ -76,7 +76,7 @@ export default function ForgotPassword({ addToast }) {
         <form className="auth-form" onSubmit={handleSubmit}>
           <div>
             <label className="input-label">Email address</label>
-            <input className="input" type="email" placeholder="you@example.com"
+            <input className="input" type="email" placeholder=""
               value={email} onChange={e => setEmail(e.target.value)}
               required autoFocus />
           </div>
