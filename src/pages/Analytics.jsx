@@ -174,7 +174,6 @@ export default function Analytics({ addToast }) {
               <YAxis domain={[0, 100]} tick={{ fill: "var(--text3)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => v + "%"} />
               <Tooltip content={<CustomTooltip />} />
               <ReferenceLine y={75} stroke="var(--accent)" strokeDasharray="4 3" strokeWidth={1.5}
-                label={{ value: "75%", fill: "var(--accent)", fontSize: 10, position: "right" }} />
               <Bar dataKey="pct" name="Attendance %" radius={[4, 4, 0, 0]}>
                 {subjectData.map((d, i) => <Cell key={i} fill={getColor(d.pct)} />)}
               </Bar>
