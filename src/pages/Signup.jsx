@@ -93,15 +93,15 @@ export default function Signup({ addToast }) {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div>
-            <label className="input-label">Full Name</label>
-            <input className="input" type="text" placeholder="Your full name"
+            <label className="input-label">Name</label>
+            <input className="input" type="text" placeholder=""
               value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               required autoFocus />
           </div>
 
           <div>
             <label className="input-label">Email address</label>
-            <input className="input" type="email" placeholder="you@example.com"
+            <input className="input" type="email" placeholder=""
               value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
               required />
           </div>
@@ -110,7 +110,7 @@ export default function Signup({ addToast }) {
             <label className="input-label">Password</label>
             <div className="pw-wrap">
               <input className="input" type={showPw ? "text" : "password"}
-                placeholder="At least 6 characters"
+                placeholder=""
                 value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 required />
               <button type="button" className="pw-toggle" onClick={() => setShowPw(v => !v)} tabIndex={-1}>
