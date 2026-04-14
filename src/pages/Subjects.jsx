@@ -133,14 +133,14 @@ export default function Subjects({ addToast }) {
                 <label className="input-label">Subject Name *</label>
                 <input className="input" value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Data Structures"
+                  placeholder=""
                   required autoFocus />
               </div>
               <div>
                 <label className="input-label">Teacher / Professor</label>
                 <input className="input" value={form.teacher}
                   onChange={e => setForm(f => ({ ...f, teacher: e.target.value }))}
-                  placeholder="e.g. Dr. Sharma" />
+                  placeholder="" />
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                 <button className="btn btn-ghost w-full" type="button" onClick={() => setShowModal(false)}>
