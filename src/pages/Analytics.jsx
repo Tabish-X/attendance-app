@@ -23,7 +23,7 @@ const CustomTooltip = ({ active, payload, label }) => {
       <p style={{ fontWeight: 600, marginBottom: 4, color: "var(--text)" }}>{label}</p>
       {payload.map((p, i) => (
         <p key={i} style={{ color: p.color || "var(--text2)" }}>
-          {p.name}: {typeof p.value === "number" ? p.value.toFixed(1) + "%" : p.value}
+          {p.name}: {p.value} lectures
         </p>
       ))}
     </div>
@@ -166,7 +166,7 @@ export default function Analytics({ addToast }) {
 
         {/* Bar Chart */}
         <div className="card">
-          <p className="section-title">Attendance by Subject</p>
+          <p className="section-title">Bar Graph</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={subjectData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -184,7 +184,7 @@ export default function Analytics({ addToast }) {
 
         {/* Pie Chart */}
         <div className="card">
-          <p className="section-title">Present vs Absent</p>
+          <p className="section-title">Chart Graph</p>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value"
