@@ -193,6 +193,10 @@ select.input { appearance: none; cursor: pointer; background-image: url("data:im
 .auth-link { color: var(--accent); text-decoration: none; font-weight: 500; }
 .auth-link:hover { text-decoration: underline; }
 
+/* ── Breakdown table (no horizontal scroll) ── */
+.breakdown-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.breakdown-wrap table { min-width: 0; }
+
 @media (max-width: 700px) {
   .page { padding: calc(var(--nav-h) + 16px) 16px 40px; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
@@ -201,4 +205,18 @@ select.input { appearance: none; cursor: pointer; background-image: url("data:im
   .nav-user-name { display: none; }
   .nav-ham { display: flex; }
   .auth-card { padding: 28px 20px; }
+
+  /* Charts: stack to single column on mobile */
+  .page > div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Analytics subject breakdown grid: fewer columns */
+  .card > div[style*="grid-template-columns:1fr 60px"] > div {
+    grid-template-columns: 1fr 44px 44px 64px !important;
+  }
+  /* Hide 75% status column on very small screens */
+  .card > div > div > p:last-child {
+    display: none;
+  }
 }
