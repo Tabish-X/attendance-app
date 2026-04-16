@@ -202,7 +202,6 @@ export default function AttendanceTable({ addToast }) {
                     <th style={th}>Present</th>
                     <th style={th}>Absent</th>
                     <th style={th}>Attendance %</th>
-                    <th style={th}>75% Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -217,20 +216,6 @@ export default function AttendanceTable({ addToast }) {
                           <span style={{ fontWeight:700, color:getColor(st.pct) }}>
                             {st.pct !== null ? st.pct.toFixed(1) + "%" : "—"}
                           </span>
-                        </td>
-                        <td style={td}>
-                          {st.lecturesNeeded !== null && (
-                            <span style={{ color:"var(--red)", fontSize:12 }}>Need {st.lecturesNeeded} more</span>
-                          )}
-                          {st.canBunk !== null && st.canBunk > 0 && (
-                            <span style={{ color:"var(--green)", fontSize:12 }}>Can skip {st.canBunk}</span>
-                          )}
-                          {st.pct !== null && st.pct >= TARGET && st.canBunk === 0 && (
-                            <span style={{ color:"var(--yellow)", fontSize:12 }}>Right at limit</span>
-                          )}
-                          {st.total === 0 && (
-                            <span style={{ color:"var(--text3)", fontSize:12 }}>No records</span>
-                          )}
                         </td>
                       </tr>
                     );
@@ -249,11 +234,59 @@ export default function AttendanceTable({ addToast }) {
 
               if (monthRecords.length === 0) return null;
 
+              const monthStats = calcStats(monthRecords, subjects);
+
               return (
                 <div key={key}>
                   <p className="section-title" style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:10 }}>
                     {MONTH_NAMES[month-1]} {year}
                   </p>
+
+                  {/* Per-subject 75% status for this month */}
+                  <div className="breakdown-wrap" style={{ marginBottom:12 }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                      <thead>
+                        <tr>
+                          <th style={th}>Subject</th>
+                          <th style={th}>Present</th>
+                          <th style={th}>Absent</th>
+                          <th style={th}>%</th>
+                          <th style={th}>75% Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subjects.map(s => {
+                          const st = monthStats[s.id];
+                          if (!st || st.total === 0) return null;
+                          return (
+                            <tr key={s.id}>
+                              <td style={td}><span style={{ fontWeight:600 }}>{s.name}</span></td>
+                              <td style={td}><span style={{ color:"var(--green)", fontWeight:500 }}>{st.present}</span></td>
+                              <td style={td}><span style={{ color:"var(--red)",   fontWeight:500 }}>{st.absent}</span></td>
+                              <td style={td}>
+                                <span style={{ fontWeight:700, color:getColor(st.pct) }}>
+                                  {st.pct !== null ? st.pct.toFixed(1) + "%" : "—"}
+                                </span>
+                              </td>
+                              <td style={td}>
+                                {st.lecturesNeeded !== null && (
+                                  <span style={{ color:"var(--red)", fontSize:12 }}>Need {st.lecturesNeeded} more</span>
+                                )}
+                                {st.canBunk !== null && st.canBunk > 0 && (
+                                  <span style={{ color:"var(--green)", fontSize:12 }}>Can skip {st.canBunk}</span>
+                                )}
+                                {st.pct !== null && st.pct >= TARGET && st.canBunk === 0 && (
+                                  <span style={{ color:"var(--yellow)", fontSize:12 }}>Right at limit</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Raw records table for this month */}
                   <div className="table-wrap">
                     <table>
                       <thead>
