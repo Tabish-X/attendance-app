@@ -16,20 +16,30 @@ function getColor(pct) {
   return "#ce2c31";
 }
 
-const CustomTooltip = ({ active, payload, label }) => {
+// Tooltip for bar/line charts — values are percentages
+const PctTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{
-      background:"#fff", border:"1px solid var(--border)",
-      borderRadius:6, padding:"10px 14px",
-      fontSize:13, boxShadow:"0 2px 8px rgba(0,0,0,0.08)",
-    }}>
+    <div style={{ background:"#fff", border:"1px solid var(--border)", borderRadius:6, padding:"10px 14px", fontSize:13, boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
       <p style={{ fontWeight:600, marginBottom:4, color:"var(--text)" }}>{label}</p>
       {payload.map((p, i) => (
         <p key={i} style={{ color: p.color || "var(--text2)" }}>
           {p.name}: {typeof p.value === "number" ? p.value.toFixed(1) + "%" : p.value}
         </p>
       ))}
+    </div>
+  );
+};
+
+// Tooltip for pie chart — values are lecture counts, not percentages
+const PieTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const p = payload[0];
+  return (
+    <div style={{ background:"#fff", border:"1px solid var(--border)", borderRadius:6, padding:"10px 14px", fontSize:13, boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
+      <p style={{ fontWeight:600, color: p.payload.color }}>
+        {p.name}: {p.value} lecture{p.value !== 1 ? "s" : ""}
+      </p>
     </div>
   );
 };
@@ -167,13 +177,13 @@ export default function Analytics({ addToast }) {
 
         {/* Bar Chart — attendance by subject */}
         <div className="card">
-          <p className="section-title">Attendance by Subject</p>
+          <p className="section-title">Bar Chart</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={subjectData} margin={{ top:5, right:16, bottom:5, left:0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="name" tick={{ fill:"var(--text3)", fontSize:11 }} axisLine={false} tickLine={false} />
               <YAxis domain={[0,100]} tick={{ fill:"var(--text3)", fontSize:11 }} axisLine={false} tickLine={false} tickFormatter={v => v + "%"} width={36} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<PctTooltip />} />
               {/* No label prop — removes the visible "75%" text */}
               <ReferenceLine y={75} stroke="var(--accent)" strokeDasharray="4 3" strokeWidth={1.5} />
               <Bar dataKey="pct" name="Attendance %" radius={[4,4,0,0]}>
@@ -185,7 +195,7 @@ export default function Analytics({ addToast }) {
 
         {/* Pie Chart — present vs absent */}
         <div className="card" style={{ display:"flex", flexDirection:"column" }}>
-          <p className="section-title">Present vs Absent</p>
+          <p className="section-title">Pie Chart of Attendance</p>
           {/* Fixed height container so it never gets cropped */}
           <div style={{ width:"100%", height:200, minHeight:200 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -202,7 +212,7 @@ export default function Analytics({ addToast }) {
                 >
                   {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<PieTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -226,7 +236,7 @@ export default function Analytics({ addToast }) {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="label" tick={{ fill:"var(--text3)", fontSize:11 }} axisLine={false} tickLine={false} />
               <YAxis domain={[0,100]} tick={{ fill:"var(--text3)", fontSize:11 }} axisLine={false} tickLine={false} tickFormatter={v => v + "%"} width={36} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<PctTooltip />} />
               <ReferenceLine y={75} stroke="var(--accent)" strokeDasharray="4 3" strokeWidth={1.5} />
               <Line type="monotone" dataKey="pct" name="Attendance %"
                 stroke="var(--accent)" strokeWidth={2}
@@ -242,14 +252,14 @@ export default function Analytics({ addToast }) {
         {/* Use a stacked card layout instead of a wide table */}
         <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
           {/* Header row */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 60px 60px 80px 1fr", gap:8, padding:"8px 12px", background:"var(--bg2)", borderRadius:"var(--radius2)", marginBottom:4 }}>
-            {["Subject","Present","Absent","Attend %","75% Status"].map(h => (
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 60px 60px 80px", gap:8, padding:"8px 12px", background:"var(--bg2)", borderRadius:"var(--radius2)", marginBottom:4 }}>
+            {["Subject","Present","Absent","Attend %"].map(h => (
               <p key={h} style={{ fontSize:11, fontWeight:600, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.05em" }}>{h}</p>
             ))}
           </div>
           {subjectData.map((s, i) => (
             <div key={s.fullName} style={{
-              display:"grid", gridTemplateColumns:"1fr 60px 60px 80px 1fr",
+              display:"grid", gridTemplateColumns:"1fr 60px 60px 80px",
               gap:8, padding:"11px 12px",
               borderBottom: i < subjectData.length - 1 ? "1px solid var(--border)" : "none",
               alignItems:"center",
@@ -259,12 +269,6 @@ export default function Analytics({ addToast }) {
               <p style={{ color:"var(--red)",   fontWeight:500, fontSize:13 }}>{s.absent}</p>
               <p style={{ fontWeight:700, fontSize:13, color:getColor(s.pct) }}>
                 {s.total > 0 ? s.pct.toFixed(1) + "%" : "—"}
-              </p>
-              <p style={{ fontSize:12 }}>
-                {s.needed   !== null            && <span style={{ color:"var(--red)"    }}>Need {s.needed} more</span>}
-                {s.canBunk  !== null && s.canBunk > 0 && <span style={{ color:"var(--green)"  }}>Can skip {s.canBunk}</span>}
-                {s.canBunk  === 0 && s.pct >= 75       && <span style={{ color:"var(--yellow)" }}>Right at limit</span>}
-                {s.total    === 0                       && <span style={{ color:"var(--text3)"  }}>No records</span>}
               </p>
             </div>
           ))}
