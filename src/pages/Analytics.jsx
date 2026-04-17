@@ -16,7 +16,7 @@ function getColor(pct) {
   return "#ce2c31";
 }
 
-// Tooltip for bar/line charts — values are percentages
+// Tooltip for bar / line charts — shows percentage
 const PctTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -31,7 +31,7 @@ const PctTooltip = ({ active, payload, label }) => {
   );
 };
 
-// Tooltip for pie chart — values are lecture counts, not percentages
+// Tooltip for pie chart — shows lecture count, not %
 const PieTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const p = payload[0];
@@ -68,12 +68,10 @@ export default function Analytics({ addToast }) {
     const absent  = recs.filter(r => r.status === "absent").length;
     const total   = present + absent;
     const pct     = total > 0 ? parseFloat(((present / total) * 100).toFixed(2)) : 0;
-    const needed  = pct < 75 && total > 0 ? Math.ceil((75 * total - 100 * present) / 25) : null;
-    const canBunk = pct >= 75 && total > 0 ? Math.floor((100 * present / 75) - total) : null;
     return {
       name:     s.name.length > 10 ? s.name.slice(0, 10) + "…" : s.name,
       fullName: s.name,
-      pct, present, absent, total, needed, canBunk,
+      pct, present, absent, total,
     };
   }), [subjects, records]);
 
@@ -172,10 +170,10 @@ export default function Analytics({ addToast }) {
         ))}
       </div>
 
-      {/* Charts row */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18, marginBottom:18 }}>
+      {/* Charts row — stack on mobile */}
+      <div className="charts-grid">
 
-        {/* Bar Chart — attendance by subject */}
+        {/* Bar Chart */}
         <div className="card">
           <p className="section-title">Bar Chart</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -184,7 +182,7 @@ export default function Analytics({ addToast }) {
               <XAxis dataKey="name" tick={{ fill:"var(--text3)", fontSize:11 }} axisLine={false} tickLine={false} />
               <YAxis domain={[0,100]} tick={{ fill:"var(--text3)", fontSize:11 }} axisLine={false} tickLine={false} tickFormatter={v => v + "%"} width={36} />
               <Tooltip content={<PctTooltip />} />
-              {/* No label prop — removes the visible "75%" text */}
+              {/* No label prop — no "75%" text floating on chart */}
               <ReferenceLine y={75} stroke="var(--accent)" strokeDasharray="4 3" strokeWidth={1.5} />
               <Bar dataKey="pct" name="Attendance %" radius={[4,4,0,0]}>
                 {subjectData.map((d, i) => <Cell key={i} fill={getColor(d.pct)} />)}
@@ -193,10 +191,9 @@ export default function Analytics({ addToast }) {
           </ResponsiveContainer>
         </div>
 
-        {/* Pie Chart — present vs absent */}
+        {/* Pie Chart */}
         <div className="card" style={{ display:"flex", flexDirection:"column" }}>
           <p className="section-title">Pie Chart of Attendance</p>
-          {/* Fixed height container so it never gets cropped */}
           <div style={{ width:"100%", height:200, minHeight:200 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart margin={{ top:10, right:10, bottom:10, left:10 }}>
@@ -205,7 +202,6 @@ export default function Analytics({ addToast }) {
                   cx="50%" cy="50%"
                   outerRadius="65%"
                   dataKey="value"
-                  // Simple label without labelLine to avoid cutoff on mobile
                   label={({ name, percent }) => `${name} ${(percent*100).toFixed(0)}%`}
                   labelLine={false}
                   fontSize={11}
@@ -227,9 +223,9 @@ export default function Analytics({ addToast }) {
         </div>
       </div>
 
-      {/* Monthly trend — only if 2+ months */}
+      {/* Monthly Trend */}
       {monthlyData.length > 1 && (
-        <div className="card" style={{ marginBottom:18 }}>
+        <div className="card" style={{ marginTop:18 }}>
           <p className="section-title">Monthly Attendance Trend</p>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={monthlyData} margin={{ top:5, right:16, bottom:5, left:0 }}>
@@ -245,35 +241,6 @@ export default function Analytics({ addToast }) {
           </ResponsiveContainer>
         </div>
       )}
-
-      {/* Subject Breakdown — mobile-friendly, no horizontal scroll */}
-      <div className="card">
-        <p className="section-title">Subject Breakdown</p>
-        {/* Use a stacked card layout instead of a wide table */}
-        <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
-          {/* Header row */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 60px 60px 80px", gap:8, padding:"8px 12px", background:"var(--bg2)", borderRadius:"var(--radius2)", marginBottom:4 }}>
-            {["Subject","Present","Absent","Attend %"].map(h => (
-              <p key={h} style={{ fontSize:11, fontWeight:600, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.05em" }}>{h}</p>
-            ))}
-          </div>
-          {subjectData.map((s, i) => (
-            <div key={s.fullName} style={{
-              display:"grid", gridTemplateColumns:"1fr 60px 60px 80px",
-              gap:8, padding:"11px 12px",
-              borderBottom: i < subjectData.length - 1 ? "1px solid var(--border)" : "none",
-              alignItems:"center",
-            }}>
-              <p style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.fullName}</p>
-              <p style={{ color:"var(--green)", fontWeight:500, fontSize:13 }}>{s.present}</p>
-              <p style={{ color:"var(--red)",   fontWeight:500, fontSize:13 }}>{s.absent}</p>
-              <p style={{ fontWeight:700, fontSize:13, color:getColor(s.pct) }}>
-                {s.total > 0 ? s.pct.toFixed(1) + "%" : "—"}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
