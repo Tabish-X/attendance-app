@@ -233,40 +233,44 @@ export default function AttendanceTable({ addToast }) {
             </span>
           </div>
 
-          {/* ── Per-subject stats table for selected month ── */}
+          {/* ── Per-subject stats for selected month ── */}
           <div style={{ marginBottom: 20 }}>
             <p className="section-title">{filteredLabel} — Subject Stats</p>
-            {/* Card rows instead of table — no horizontal scroll, mobile-friendly */}
             <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-              {/* Header */}
-              <div style={statsGridHeader}>
-                <span>Subject</span>
-                <span style={{ textAlign: "center" }}>Present</span>
-                <span style={{ textAlign: "center" }}>Absent</span>
-                <span style={{ textAlign: "center" }}>%</span>
-                <span>75% Status</span>
-              </div>
-              {/* Rows */}
               {subjects.map((s, i) => {
                 const st  = filteredStats[s.id] || { present: 0, absent: 0, total: 0, pct: null, lecturesNeeded: null, canBunk: null };
                 const s75 = status75(st);
                 const isLast = i === subjects.length - 1;
                 return (
                   <div key={s.id} style={{
-                    ...statsGridRow,
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "12px 16px", flexWrap: "wrap",
                     borderBottom: isLast ? "none" : "1px solid var(--border)",
                   }}>
-                    <span style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {s.name}
-                    </span>
-                    <span style={{ textAlign: "center", color: "var(--green)", fontWeight: 600 }}>{st.present}</span>
-                    <span style={{ textAlign: "center", color: "var(--red)",   fontWeight: 600 }}>{st.absent}</span>
-                    <span style={{ textAlign: "center", fontWeight: 700, color: getColor(st.pct) }}>
-                      {st.pct !== null ? st.pct.toFixed(1) + "%" : "—"}
-                    </span>
-                    <span style={{ fontSize: 12, color: s75?.color || "var(--text3)", fontWeight: 500 }}>
-                      {s75 ? s75.text : st.total === 0 ? "No records" : "—"}
-                    </span>
+                    {/* Subject name + 75% status below it */}
+                    <div style={{ flex: "1 1 100px", minWidth: 0 }}>
+                      <p style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {s.name}
+                      </p>
+                      {s75 ? (
+                        <p style={{ fontSize: 11, color: s75.color, fontWeight: 500, marginTop: 2 }}>{s75.text}</p>
+                      ) : st.total === 0 ? (
+                        <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>No records</p>
+                      ) : null}
+                    </div>
+                    {/* Numbers */}
+                    <div style={{ display: "flex", gap: 18, flexShrink: 0 }}>
+                      {[
+                        { label: "Present", value: st.present, color: "var(--green)" },
+                        { label: "Absent",  value: st.absent,  color: "var(--red)" },
+                        { label: "Attend %", value: st.pct !== null ? st.pct.toFixed(1) + "%" : "—", color: getColor(st.pct) },
+                      ].map(col => (
+                        <div key={col.label} style={{ textAlign: "center" }}>
+                          <p style={{ fontSize: 10, color: "var(--text3)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>{col.label}</p>
+                          <p style={{ fontWeight: 700, color: col.color, fontSize: 14 }}>{col.value}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })}
@@ -316,27 +320,3 @@ export default function AttendanceTable({ addToast }) {
     </div>
   );
 }
-
-// Grid styles — 5 columns, responsive text
-const statsGridHeader = {
-  display: "grid",
-  gridTemplateColumns: "minmax(80px,1.5fr) 64px 64px 64px minmax(100px,1fr)",
-  gap: 8,
-  padding: "9px 14px",
-  background: "var(--bg2)",
-  fontSize: 11,
-  fontWeight: 600,
-  color: "var(--text3)",
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-  borderBottom: "1px solid var(--border)",
-  alignItems: "center",
-};
-
-const statsGridRow = {
-  display: "grid",
-  gridTemplateColumns: "minmax(80px,1.5fr) 64px 64px 64px minmax(100px,1fr)",
-  gap: 8,
-  padding: "11px 14px",
-  alignItems: "center",
-};
