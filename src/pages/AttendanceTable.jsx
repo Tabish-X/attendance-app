@@ -33,32 +33,35 @@ function calcStats(records, subjects) {
   return stats;
 }
 
-// ── Small stat box ──────────────────────────────────────────────────────────
+function status75(st) {
+  if (!st || st.total === 0) return null;
+  if (st.lecturesNeeded !== null)
+    return { text: `Need ${st.lecturesNeeded} more`, color: "var(--red)" };
+  if (st.canBunk !== null && st.canBunk > 0)
+    return { text: `Can skip ${st.canBunk}`, color: "var(--green)" };
+  if (st.pct !== null && st.pct >= TARGET && st.canBunk === 0)
+    return { text: "Right at limit", color: "var(--yellow)" };
+  return null;
+}
+
+// ── Percentage box ──────────────────────────────────────────────────────────
 function PctBox({ label, pct, isOverall }) {
   const color = getColor(pct);
   return (
     <div style={{
-      background: "var(--card)",
-      border: `1px solid var(--border)`,
-      borderRadius: "var(--radius2)",
-      padding: "12px 16px",
-      minWidth: 0,
-      flex: "1 1 120px",
+      background: "var(--card)", border: "1px solid var(--border)",
+      borderRadius: "var(--radius2)", padding: "12px 16px",
+      minWidth: 0, flex: "1 1 110px",
       borderTop: `3px solid ${pct !== null ? color : "var(--border)"}`,
     }}>
       <p style={{
         fontSize: 11, fontWeight: 600, color: "var(--text3)",
-        textTransform: "uppercase", letterSpacing: "0.05em",
-        marginBottom: 6,
+        textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-      }}>
-        {label}
-      </p>
+      }}>{label}</p>
       <p style={{
-        fontSize: isOverall ? 26 : 22,
-        fontWeight: 700,
+        fontSize: isOverall ? 26 : 22, fontWeight: 700, lineHeight: 1,
         color: pct !== null ? color : "var(--text3)",
-        lineHeight: 1,
       }}>
         {pct !== null ? pct.toFixed(1) + "%" : "—"}
       </p>
@@ -66,19 +69,20 @@ function PctBox({ label, pct, isOverall }) {
   );
 }
 
-// ── Month box ───────────────────────────────────────────────────────────────
-function MonthBox({ label, pct }) {
+// ── Month box (clickable) ───────────────────────────────────────────────────
+function MonthBox({ label, pct, selected, onClick }) {
   const color = getColor(pct);
   return (
-    <div style={{
-      background: "var(--card)",
-      border: "1px solid var(--border)",
-      borderRadius: "var(--radius2)",
-      padding: "10px 14px",
-      flex: "1 1 100px",
-      minWidth: 0,
+    <div onClick={onClick} style={{
+      background: selected ? "var(--accent-light)" : "var(--card)",
+      border: `1px solid ${selected ? "var(--accent)" : "var(--border)"}`,
+      borderRadius: "var(--radius2)", padding: "10px 14px",
+      flex: "1 1 90px", minWidth: 0, cursor: "pointer",
+      transition: "all 0.12s ease",
     }}>
-      <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text3)", marginBottom: 4 }}>{label}</p>
+      <p style={{ fontSize: 11, fontWeight: 600, color: selected ? "var(--accent)" : "var(--text3)", marginBottom: 4 }}>
+        {label}
+      </p>
       <p style={{ fontSize: 18, fontWeight: 700, color: pct !== null ? color : "var(--text3)" }}>
         {pct !== null ? pct.toFixed(1) + "%" : "—"}
       </p>
@@ -91,6 +95,7 @@ export default function AttendanceTable({ addToast }) {
   const [subjects, setSubjects] = useState([]);
   const [records,  setRecords]  = useState([]);
   const [loading,  setLoading]  = useState(true);
+  const [selectedKey, setSelectedKey] = useState("all"); // "all" or "YYYY-MM"
 
   useEffect(() => {
     const u1 = onSnapshot(
@@ -107,13 +112,7 @@ export default function AttendanceTable({ addToast }) {
     return () => { u1(); u2(); };
   }, [currentUser]);
 
-  // Overall stats
-  const overallStats = useMemo(() => calcStats(records, subjects), [records, subjects]);
-  const overallPresent = Object.values(overallStats).reduce((a, s) => a + s.present, 0);
-  const overallTotal   = Object.values(overallStats).reduce((a, s) => a + s.total, 0);
-  const overallPct     = overallTotal > 0 ? (overallPresent / overallTotal) * 100 : null;
-
-  // Month list
+  // All months that have records
   const monthYearList = useMemo(() => {
     const set = new Set(records.map(r => `${r.year}-${String(r.month).padStart(2, "0")}`));
     return [...set].sort().map(key => {
@@ -122,28 +121,50 @@ export default function AttendanceTable({ addToast }) {
     });
   }, [records]);
 
-  // Monthly overall %
+  // Overall % per subject (all time)
+  const overallStats  = useMemo(() => calcStats(records, subjects), [records, subjects]);
+  const overallPresent = Object.values(overallStats).reduce((a, s) => a + s.present, 0);
+  const overallTotal   = Object.values(overallStats).reduce((a, s) => a + s.total, 0);
+  const overallPct     = overallTotal > 0 ? (overallPresent / overallTotal) * 100 : null;
+
   function monthPct(year, month) {
     const recs = records.filter(r => r.year === year && r.month === month);
     const p = recs.filter(r => r.status === "present").length;
-    const t = recs.length;
-    return t > 0 ? (p / t) * 100 : null;
+    return recs.length > 0 ? (p / recs.length) * 100 : null;
   }
+
+  // Records and stats for selected month (or all)
+  const { filteredRecords, filteredStats, filteredLabel } = useMemo(() => {
+    if (selectedKey === "all") {
+      return {
+        filteredRecords: records,
+        filteredStats: overallStats,
+        filteredLabel: "All Time",
+      };
+    }
+    const [y, m] = selectedKey.split("-").map(Number);
+    const recs = records.filter(r => r.year === y && r.month === m).sort((a, b) => a.day - b.day);
+    return {
+      filteredRecords: recs,
+      filteredStats: calcStats(recs, subjects),
+      filteredLabel: `${MONTH_NAMES[m - 1]} ${y}`,
+    };
+  }, [selectedKey, records, subjects, overallStats]);
 
   function exportCSV() {
     const rows = [["Date","Subject","Status"]];
-    records.forEach(r => rows.push([r.dateStr, r.subjectName, r.status]));
+    filteredRecords.forEach(r => rows.push([r.dateStr, r.subjectName, r.status]));
     const csv  = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
-    a.href = url; a.download = "attendance.csv"; a.click();
+    a.href = url; a.download = `attendance${selectedKey === "all" ? "" : "-" + selectedKey}.csv`; a.click();
     URL.revokeObjectURL(url);
     addToast("CSV exported.", "success");
   }
 
   if (loading) return (
-    <div className="page" style={{ display:"flex", justifyContent:"center", paddingTop:80 }}>
+    <div className="page" style={{ display: "flex", justifyContent: "center", paddingTop: 80 }}>
       <div className="spinner" />
     </div>
   );
@@ -152,7 +173,7 @@ export default function AttendanceTable({ addToast }) {
     <div className="page">
 
       {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
           <h1 className="page-title">Attendance Table</h1>
           <p className="page-subtitle">Your attendance records and statistics</p>
@@ -162,162 +183,133 @@ export default function AttendanceTable({ addToast }) {
 
       {records.length === 0 ? (
         <div className="empty-state card">
-          <p style={{ fontSize:15, color:"var(--text2)" }}>
+          <p style={{ fontSize: 15, color: "var(--text2)" }}>
             No data yet. Start marking attendance to see records.
           </p>
         </div>
       ) : (
         <>
-          {/* ── Row 1: Overall + per-subject % boxes ── */}
-          <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:12 }}>
+          {/* ── Row 1: Overall + per-subject % ── */}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
             <PctBox label="Overall" pct={overallPct} isOverall />
-            {subjects.map(s => {
-              const st = overallStats[s.id];
-              return <PctBox key={s.id} label={s.name} pct={st?.pct ?? null} />;
-            })}
+            {subjects.map(s => (
+              <PctBox key={s.id} label={s.name} pct={overallStats[s.id]?.pct ?? null} />
+            ))}
           </div>
 
-          {/* ── Row 2: Monthly overall % boxes ── */}
+          {/* ── Row 2: Monthly % boxes (click to select) ── */}
           {monthYearList.length > 0 && (
-            <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:28 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 24 }}>
               {monthYearList.map(({ year, month, key }) => (
                 <MonthBox
                   key={key}
-                  label={`${MONTH_NAMES[month-1]} ${year}`}
+                  label={`${MONTH_NAMES[month - 1]} ${year}`}
                   pct={monthPct(year, month)}
+                  selected={selectedKey === key}
+                  onClick={() => setSelectedKey(prev => prev === key ? "all" : key)}
                 />
               ))}
             </div>
           )}
 
-          {/* ── Subject Breakdown Table ── */}
-          <div style={{ marginBottom: 28 }}>
-            <p className="section-title">Subject Breakdown</p>
-            {/* Responsive: stack on mobile, table on desktop */}
-            <div className="breakdown-wrap">
-              <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-                <thead>
-                  <tr>
-                    <th style={th}>Subject</th>
-                    <th style={th}>Present</th>
-                    <th style={th}>Absent</th>
-                    <th style={th}>Attendance %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {subjects.map(s => {
-                    const st = overallStats[s.id] || { present:0, absent:0, total:0, pct:null, lecturesNeeded:null, canBunk:null };
-                    return (
-                      <tr key={s.id}>
-                        <td style={td}><span style={{ fontWeight:600 }}>{s.name}</span></td>
-                        <td style={td}><span style={{ color:"var(--green)", fontWeight:500 }}>{st.present}</span></td>
-                        <td style={td}><span style={{ color:"var(--red)",   fontWeight:500 }}>{st.absent}</span></td>
-                        <td style={td}>
-                          <span style={{ fontWeight:700, color:getColor(st.pct) }}>
-                            {st.pct !== null ? st.pct.toFixed(1) + "%" : "—"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {/* ── Month dropdown selector ── */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
+            <label className="input-label" style={{ margin: 0 }}>Showing month:</label>
+            <select
+              className="input"
+              style={{ width: "auto" }}
+              value={selectedKey}
+              onChange={e => setSelectedKey(e.target.value)}
+            >
+              <option value="all">All Time</option>
+              {monthYearList.map(({ year, month, key }) => (
+                <option key={key} value={key}>
+                  {MONTH_NAMES[month - 1]} {year}
+                </option>
+              ))}
+            </select>
+            <span style={{ fontSize: 13, color: "var(--text3)" }}>
+              {filteredRecords.length} record{filteredRecords.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {/* ── Per-subject stats table for selected month ── */}
+          <div style={{ marginBottom: 20 }}>
+            <p className="section-title">{filteredLabel} — Subject Stats</p>
+            {/* Card rows instead of table — no horizontal scroll, mobile-friendly */}
+            <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
+              {/* Header */}
+              <div style={statsGridHeader}>
+                <span>Subject</span>
+                <span style={{ textAlign: "center" }}>Present</span>
+                <span style={{ textAlign: "center" }}>Absent</span>
+                <span style={{ textAlign: "center" }}>%</span>
+                <span>75% Status</span>
+              </div>
+              {/* Rows */}
+              {subjects.map((s, i) => {
+                const st  = filteredStats[s.id] || { present: 0, absent: 0, total: 0, pct: null, lecturesNeeded: null, canBunk: null };
+                const s75 = status75(st);
+                const isLast = i === subjects.length - 1;
+                return (
+                  <div key={s.id} style={{
+                    ...statsGridRow,
+                    borderBottom: isLast ? "none" : "1px solid var(--border)",
+                  }}>
+                    <span style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {s.name}
+                    </span>
+                    <span style={{ textAlign: "center", color: "var(--green)", fontWeight: 600 }}>{st.present}</span>
+                    <span style={{ textAlign: "center", color: "var(--red)",   fontWeight: 600 }}>{st.absent}</span>
+                    <span style={{ textAlign: "center", fontWeight: 700, color: getColor(st.pct) }}>
+                      {st.pct !== null ? st.pct.toFixed(1) + "%" : "—"}
+                    </span>
+                    <span style={{ fontSize: 12, color: s75?.color || "var(--text3)", fontWeight: 500 }}>
+                      {s75 ? s75.text : st.total === 0 ? "No records" : "—"}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* ── Month by Month Tables ── */}
-          <div style={{ display:"flex", flexDirection:"column", gap:32 }}>
-            {monthYearList.map(({ year, month, key }) => {
-              const monthRecords = records
-                .filter(r => r.year === year && r.month === month)
-                .sort((a, b) => a.day - b.day);
-
-              if (monthRecords.length === 0) return null;
-
-              const monthStats = calcStats(monthRecords, subjects);
-
-              return (
-                <div key={key}>
-                  <p className="section-title" style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:10 }}>
-                    {MONTH_NAMES[month-1]} {year}
-                  </p>
-
-                  {/* Per-subject 75% status for this month */}
-                  <div className="breakdown-wrap" style={{ marginBottom:12 }}>
-                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-                      <thead>
-                        <tr>
-                          <th style={th}>Subject</th>
-                          <th style={th}>Present</th>
-                          <th style={th}>Absent</th>
-                          <th style={th}>%</th>
-                          <th style={th}>75% Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {subjects.map(s => {
-                          const st = monthStats[s.id];
-                          if (!st || st.total === 0) return null;
-                          return (
-                            <tr key={s.id}>
-                              <td style={td}><span style={{ fontWeight:600 }}>{s.name}</span></td>
-                              <td style={td}><span style={{ color:"var(--green)", fontWeight:500 }}>{st.present}</span></td>
-                              <td style={td}><span style={{ color:"var(--red)",   fontWeight:500 }}>{st.absent}</span></td>
-                              <td style={td}>
-                                <span style={{ fontWeight:700, color:getColor(st.pct) }}>
-                                  {st.pct !== null ? st.pct.toFixed(1) + "%" : "—"}
-                                </span>
-                              </td>
-                              <td style={td}>
-                                {st.lecturesNeeded !== null && (
-                                  <span style={{ color:"var(--red)", fontSize:12 }}>Need {st.lecturesNeeded} more</span>
-                                )}
-                                {st.canBunk !== null && st.canBunk > 0 && (
-                                  <span style={{ color:"var(--green)", fontSize:12 }}>Can skip {st.canBunk}</span>
-                                )}
-                                {st.pct !== null && st.pct >= TARGET && st.canBunk === 0 && (
-                                  <span style={{ color:"var(--yellow)", fontSize:12 }}>Right at limit</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Raw records table for this month */}
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>Date</th>
-                          <th>Subject</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {monthRecords.map((r, i) => (
-                          <tr key={r.id}>
-                            <td style={{ color:"var(--text3)", width:40 }}>{i+1}</td>
-                            <td style={{ fontWeight:500, whiteSpace:"nowrap" }}>{r.dateStr}</td>
-                            <td style={{ fontWeight:500 }}>{r.subjectName}</td>
-                            <td>
-                              <span
-                                className={`badge ${r.status === "present" ? "badge-green" : "badge-red"}`}
-                                style={{ textTransform:"capitalize" }}>
-                                {r.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              );
-            })}
+          {/* ── Records table ── */}
+          <div>
+            <p className="section-title">{filteredLabel} — Attendance Records</p>
+            {filteredRecords.length === 0 ? (
+              <div className="empty-state card">
+                <p>No records for {filteredLabel}.</p>
+              </div>
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Date</th>
+                      <th>Subject</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRecords.map((r, i) => (
+                      <tr key={r.id}>
+                        <td style={{ color: "var(--text3)", width: 40 }}>{i + 1}</td>
+                        <td style={{ fontWeight: 500, whiteSpace: "nowrap" }}>{r.dateStr}</td>
+                        <td style={{ fontWeight: 500 }}>{r.subjectName}</td>
+                        <td>
+                          <span
+                            className={`badge ${r.status === "present" ? "badge-green" : "badge-red"}`}
+                            style={{ textTransform: "capitalize" }}>
+                            {r.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -325,18 +317,26 @@ export default function AttendanceTable({ addToast }) {
   );
 }
 
-const th = {
-  background:"var(--bg2)", color:"var(--text3)",
-  fontSize:11, fontWeight:600,
-  textTransform:"uppercase", letterSpacing:"0.06em",
-  padding:"10px 14px", textAlign:"left",
-  borderBottom:"1px solid var(--border)",
-  whiteSpace:"nowrap",
+// Grid styles — 5 columns, responsive text
+const statsGridHeader = {
+  display: "grid",
+  gridTemplateColumns: "minmax(80px,1.5fr) 64px 64px 64px minmax(100px,1fr)",
+  gap: 8,
+  padding: "9px 14px",
+  background: "var(--bg2)",
+  fontSize: 11,
+  fontWeight: 600,
+  color: "var(--text3)",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  borderBottom: "1px solid var(--border)",
+  alignItems: "center",
 };
 
-const td = {
-  padding:"11px 14px",
-  borderBottom:"1px solid var(--border)",
-  color:"var(--text)",
-  verticalAlign:"middle",
+const statsGridRow = {
+  display: "grid",
+  gridTemplateColumns: "minmax(80px,1.5fr) 64px 64px 64px minmax(100px,1fr)",
+  gap: 8,
+  padding: "11px 14px",
+  alignItems: "center",
 };
